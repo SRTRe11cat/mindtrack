@@ -1,30 +1,32 @@
 import { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "./firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { setDoc, doc } from "firebase/firestore";
+import { auth, firestore } from "./firebase";
 import { useNavigate, Link } from "react-router-dom";
 
-function Login() {
+function SignUp() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleSignUp = async () => {
     setError("");
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      console.log("Logged in:", userCredential.user);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userDoc = doc(firestore, "users", userCredential.user.uid);
+      await setDoc(userDoc, {
+        email: userCredential.user.email,
+        createdAt: new Date().toISOString(),
+      });
       navigate("/dashboard");
     } catch (error) {
-      if (error.code === "auth/user-not-found" || error.code === "auth/invalid-credential") {
-        setError("No account found with this email.");
-      } else if (error.code === "auth/wrong-password") {
-        setError("Incorrect password. Please try again.");
+      if (error.code === "auth/email-already-in-use") {
+        setError("An account with this email already exists.");
       } else if (error.code === "auth/invalid-email") {
         setError("Please enter a valid email address.");
-      } else if (error.code === "auth/too-many-requests") {
-        setError("Too many attempts. Please try again later.");
+      } else if (error.code === "auth/weak-password") {
+        setError("Password must be at least 6 characters.");
       } else {
         setError("Something went wrong. Please try again.");
       }
@@ -45,7 +47,7 @@ function Login() {
         >
           MindTrack
         </h1>
-        <p className="text-[#94a3b8] text-center text-sm mb-8">Welcome back</p>
+        <p className="text-[#94a3b8] text-center text-sm mb-8">Create your account</p>
 
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-lg px-4 py-3 mb-6">
@@ -53,7 +55,7 @@ function Login() {
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4">
           <input
             type="email"
             placeholder="Email"
@@ -67,17 +69,17 @@ function Login() {
             className="w-full bg-transparent border border-[#2dd4bf]/20 rounded-lg px-4 py-3 text-[#f1f5f9] placeholder-[#94a3b8] focus:outline-none focus:border-[#2dd4bf]"
           />
           <button
-            type="submit"
+            onClick={handleSignUp}
             className="w-full bg-[#2dd4bf] text-[#0f172a] font-bold py-3 rounded-xl text-base hover:bg-[#14b8a6] transition-colors mt-2"
           >
-            Log In
+            Create Account
           </button>
-        </form>
+        </div>
 
         <p className="text-[#94a3b8] text-center text-sm mt-6">
-          Don't have an account?{" "}
-          <Link to="/signup" className="text-[#2dd4bf] no-underline hover:underline">
-            Sign up
+          Already have an account?{" "}
+          <Link to="/login" className="text-[#2dd4bf] no-underline hover:underline">
+            Log in
           </Link>
         </p>
 
@@ -86,4 +88,4 @@ function Login() {
   );
 }
 
-export default Login;
+export default SignUp;
